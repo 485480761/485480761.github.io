@@ -30,6 +30,16 @@
   const stable = (values, groups) =>
     groups.every(group => spread(group.map(i => values[i])) < 0.0001);
 
+  function previewSpreads(edges) {
+    let predicted = initialValues.slice();
+    const series = [spread(predicted)];
+    for (let k = 1; k <= 30; k++) {
+      predicted = advance(predicted, edges);
+      series.push(spread(predicted));
+    }
+    return Object.freeze(series);
+  }
+
   if (typeof module !== "undefined" && module.exports) {
     module.exports = { initialValues, topologies, advance, spread, stable };
   }
@@ -58,13 +68,16 @@
     let width = 0;
     let height = 0;
     let finished = false;
+    const previews = Object.fromEntries(Object.entries(topologies).map(
+      ([name, graph]) => [name, previewSpreads(graph.edges)]
+    ));
+    let nodes = [];
+    let labels = [];
 
-    // Keep node centers away from the boundary, including the state label
-    // below each node. Split components form separate diamonds.
+    // The top and bottom margins include the labels outside the ellipse.
     function positions() {
-      const inset = 44;
-      const rx = Math.max(0, width / 2 - inset);
-      const ry = Math.max(0, height / 2 - inset);
+      const rx = Math.max(0, width / 2 - 28);
+      const ry = Math.max(0, height / 2 - 35);
       if (topology !== "split") {
         return allNodes.map(i => {
           const angle = (i - 1.5) * Math.PI / 4;
@@ -84,9 +97,32 @@
       });
     }
 
+    function layout() {
+      nodes = positions();
+      labels = [];
+      for (const [x, y] of nodes) {
+        const horizontal = x < width / 2 ? -1 : 1;
+        const vertical = y < height / 2 ? -1 : 1;
+        const offsets = [[0, 25 * vertical], [0, -25 * vertical],
+          [34 * horizontal, 0], [-34 * horizontal, 0],
+          [24 * horizontal, 19 * vertical], [-24 * horizontal, 19 * vertical]];
+        const free = offsets.find(([dx, dy]) => {
+          const lx = x + dx, ly = y + dy;
+          if (lx < 19 || lx > width - 19 || ly < 9 || ly > height - 9) return false;
+          // Rectangle-to-circle distance for the four-digit readout and
+          // node outline. Also reserve space for previously placed labels.
+          return nodes.every(([nx, ny]) => Math.hypot(
+            Math.max(0, Math.abs(nx - lx) - 17), Math.max(0, Math.abs(ny - ly) - 7)
+          ) >= 16) && labels.every(([lx0, ly0]) =>
+            Math.abs(lx0 - lx) >= 36 || Math.abs(ly0 - ly) >= 17);
+        }) || offsets[0];
+        labels.push([x + free[0], y + free[1]]);
+      }
+    }
+
     function nodeColor(value) {
-      const low = [93, 216, 216];
-      const high = [247, 188, 99];
+      const low = [83, 226, 239];
+      const high = [247, 190, 108];
       const t = Math.max(0, Math.min(1, value));
       return `rgb(${low.map((v, i) => Math.round(v + (high[i] - v) * t)).join(",")})`;
     }
@@ -99,10 +135,9 @@
     function draw(progress = 0) {
       if (!ctx || !width || !height) return;
       ctx.clearRect(0, 0, width, height);
-      const nodes = positions();
       const edges = topologies[topology].edges;
-      ctx.lineWidth = 1.2;
-      ctx.strokeStyle = "rgba(108, 207, 207, 0.64)";
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "rgba(104, 214, 231, 0.7)";
       for (const [i, j] of edges) {
         const [x, y] = nodes[i];
         const [endX, endY] = nodes[j];
@@ -123,10 +158,14 @@
       ctx.textBaseline = "middle";
       nodes.forEach(([x, y], i) => {
         const color = nodeColor(values[i]);
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.09;
+        circle(x, y, 19);
+        ctx.fill();
         ctx.strokeStyle = color;
         ctx.lineWidth = 1;
-        ctx.globalAlpha = 0.27;
-        circle(x, y, 16);
+        ctx.globalAlpha = 0.48;
+        circle(x, y, 15.5);
         ctx.stroke();
         ctx.globalAlpha = 1;
         circle(x, y, 11.8);
@@ -137,12 +176,13 @@
         ctx.fillText(String(i + 1), x, y + 0.5);
         ctx.font = '13px ui-monospace, Consolas, monospace';
         const label = values[i].toFixed(2);
+        const [labelX, labelY] = labels[i];
         // Mask any edge passing behind the readout.
         ctx.lineWidth = 4;
         ctx.strokeStyle = "#101c24";
-        ctx.strokeText(label, x, y + 27);
+        ctx.strokeText(label, labelX, labelY);
         ctx.fillStyle = "#e4efee";
-        ctx.fillText(label, x, y + 27);
+        ctx.fillText(label, labelX, labelY);
       });
     }
 
@@ -157,6 +197,7 @@
       if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
       if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
       if (ctx) ctx.setTransform(pixelWidth / width, 0, 0, pixelHeight / height, 0, 0);
+      layout();
       draw();
     }
 
@@ -174,6 +215,16 @@
         const readouts = values.map((v, i) => `节点${i + 1}为${v.toFixed(2)}`);
         summary.textContent = `${topologies[topology].name}网络，${state}，第${steps}步。${readouts.join("，")}。`;
       }
+      // Controls may change without advancing the model. Subscribers receive
+      // the same step for those transitions and a fresh snapshot each time.
+      document.dispatchEvent(new CustomEvent("consensus:sample", {
+        bubbles: true,
+        detail: {
+          topology, topologyName: topologies[topology].name,
+          values: values.slice(), colors: values.map(nodeColor),
+          step: steps, playing, finished, preview: previews[topology]
+        }
+      }));
     }
 
     function pause() {
@@ -226,6 +277,7 @@
       const selected = button.dataset.topology;
       if (selected !== topology && Object.hasOwn(topologies, selected)) {
         topology = selected;
+        layout();
         restart();
       }
     }));
