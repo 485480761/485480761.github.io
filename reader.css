@@ -29,6 +29,7 @@
   padding: .7rem .6rem; scrollbar-gutter: stable; -webkit-overflow-scrolling: touch; }
 .reader-sheet { min-width: 0; }
 .reader-sheet canvas { display: block; max-width: none; margin: 0 auto; box-shadow: 0 1px 5px #1e333929; }
+#focus-content .reader-viewport { height: clamp(14rem, calc(88dvh - 12rem), 54rem); }
 .reader-preview { height: clamp(9rem, 23vw, 14rem); position: relative; overflow: hidden; padding: .75rem .75rem 0; text-align: center; }
 .reader-preview img { display: block; width: min(78%, 22rem); height: auto; margin: 0 auto; box-shadow: 0 1px 6px #1e333936; }
 .reader-preview::after { position: absolute; pointer-events: none; content: ""; inset: 50% 0 0;

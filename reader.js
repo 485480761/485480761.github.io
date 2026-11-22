@@ -88,6 +88,10 @@
       (navigator.onLine ? "这一页暂时无法显示。可重新载入，或打开原 PDF。" : "当前离线。可在联网后重试，或打开已保存的 PDF。");
     retry.hidden = location.protocol === "file:";
     viewport.removeAttribute("aria-busy");
+    if (!sheet.childElementCount) {
+      if (document.activeElement === viewport) find(".reader-original").focus({ preventScroll: true });
+      viewport.hidden = true;
+    }
   }
 
   async function draw() {
@@ -96,6 +100,7 @@
     renderTask?.cancel();
     renderTask = null;
     const pageNumber = number;
+    viewport.hidden = false;
     viewport.setAttribute("aria-busy", "true");
     retry.hidden = true;
     updateControls();
@@ -165,7 +170,7 @@
         }
         pane.scrollIntoView({ block: "start", behavior: "instant" });
       });
-    }
+    } else viewport.focus({ preventScroll: true });
     try {
       if (old) await old.destroy().catch(() => {});
       if (version !== documentVersion) return;
@@ -179,9 +184,9 @@
         wasmUrl: new URL("wasm/", base).href, disableWorkerRendering: true,
         isEvalSupported: false, enableXfa: false
       });
-      const document = await loading.promise;
+      const loaded = await loading.promise;
       if (version !== documentVersion) return;
-      pdf = document;
+      pdf = loaded;
       bar.hidden = false;
       await draw();
     } catch {
