@@ -11,7 +11,8 @@
     entries.set(Number(row.dataset.id), {
       id: row.dataset.id.padStart(3, "0"),
       title: row.querySelector(".paper-zh")?.textContent || row.querySelector(".paper-title")?.textContent,
-      url: link.href
+      url: link.href,
+      filename: row.querySelector("a.paper-download")?.download || row.dataset.id.padStart(3, "0") + ".pdf"
     });
   }
   const first = entries.get(11);
@@ -20,7 +21,10 @@
   host.innerHTML = `
     <div class="reader-meta">
       <div class="reader-ident"><span class="reader-number"></span><strong class="reader-title"></strong></div>
-      <a class="reader-original" target="_blank" rel="noopener">打开原 PDF</a>
+      <div class="reader-links">
+        <a class="reader-original" target="_blank" rel="noopener">打开原 PDF</a>
+        <a class="reader-download" download>下载 PDF</a>
+      </div>
     </div>
     <div class="reader-bar" role="group" aria-label="论文阅读工具" hidden>
       <div class="reader-pages">
@@ -72,6 +76,10 @@
     find(".reader-number").textContent = selected.id;
     find(".reader-title").textContent = selected.title;
     find(".reader-original").href = selected.url;
+    const download = find(".reader-download");
+    download.href = selected.url;
+    download.download = selected.filename;
+    download.setAttribute("aria-label", "下载第 " + selected.id + " 篇《" + selected.title + "》的 PDF");
   }
 
   function updateControls() {

@@ -9,6 +9,10 @@
 .reader-title { font-size: .95rem; overflow-wrap: anywhere; }
 .reader-number { align-self: flex-start; flex: none; padding-top: .12rem; font: .78rem/1.5 var(--mono, monospace); color: #526772; }
 .reader-original { color: #086454; text-decoration: underline; text-underline-offset: .17em; font-size: .84rem; white-space: nowrap; }
+.reader-links { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; }
+.reader-download { display: inline-flex; min-height: 2rem; align-items: center; padding: .22rem .6rem;
+  border: 1px solid #a6c9c9; border-radius: .4rem; background: #edf7f5; color: #104f50; font-size: .82rem; font-weight: 650; white-space: nowrap; }
+.reader-download:hover { background: #dcefeb; }
 .reader-bar { display: flex; align-items: center; justify-content: space-between; gap: .45rem .65rem; flex-wrap: wrap;
   border-block: 1px solid #d4dce0; background: #f8fafb; }
 .reader-pages, .reader-page-jump, .reader-zoom { gap: .3rem; }
